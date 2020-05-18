@@ -1,9 +1,9 @@
 version: "3"
 services :
-  ride_service:
-    container_name: rides1
+  user_service:
+    container_name: users1
     restart: always
-    image: rides:latest
-    build: ride_microservice
+    build: User_microservice
     ports:
-      - "80:8000" 
+      - "80:8080"
+  

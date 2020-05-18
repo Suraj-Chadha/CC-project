@@ -206,23 +206,41 @@ def test():
 
 @app.route("/api/v1/_count",methods={"GET"})
 def getC():
-    x = [numberofUserHttpReq]
+    global numberofUserHttpReq
+    x = []
+    x.append(numberofUserHttpReq)
     return Response(j.dumps(x),status=200,mimetype="application/json")
 
 @app.route("/api/v1/_count",methods={"DELETE"})
 def deleteC():
+    global numberofUserHttpReq
     numberofUserHttpReq = 0
     return Response(j.dumps({}),status=200,mimetype="application/json")
+
+@app.route('/api/v1/users',methods=["POST"])
+def wrong_method():
+    global numberofUserHttpReq
+    numberofUserHttpReq +=1
+    return Response(j.dumps({"result": "Invalid method"}), 405)
+
 
 @app.route("/api/v1/users", methods={'PUT'})
 def add_user():
 
-    check_content_type(request)
+#    check_content_type(request)
+    global numberofUserHttpReq
     numberofUserHttpReq +=1
 
     json_format = UserTable.get_json(request.json)
-    json_format["action"] = "get_user"
-    r = requests.post("http://localhost:8080/api/v1/db/read" , json = json_format)
+#    json_format["action"] = "get_user"
+    d = { "action":"get_user","username":json_format["username"],"password":json_format["password"]}
+    r = requests.post("http://54.225.39.198/api/v1/db/read",json = d)
+    #, json = json_format)
+
+#    if(r == "action = get_user"):
+#        return Response("orchestrator works for get user")
+#    else:
+#        return Response("something went wrong")
 
     if(r.status_code == 200):
         abort(400 , 'user %s already exists' % (json_format['username']))
@@ -234,8 +252,8 @@ def add_user():
         if(tryi.search(password) is None):
             abort(400,"Incorrect")
 
-        #numberofUserHttpReq +=1
-        r = requests.post("http://localhost:8080/api/v1/db/write" , json = json_format)
+        numberofUserHttpReq +=1
+        r = requests.post("http://54.225.39.198/api/v1/db/write" , json = json_format)
 
         if(r.status_code == 201):
             return Response(j.dumps({}), status=201, mimetype='application/json')
@@ -247,19 +265,25 @@ def add_user():
 def delete_user(user_name):
 
     #check_content_type(request)
-    
+    global numberofUserHttpReq
     numberofUserHttpReq +=1
-    json_format = dict()
-    json_format["username"] = user_name
-    json_format["action"] = "delete_user"
+#    json_format = dict()
+#    json_format["username"] = user_name
+#    json_format["action"] = "delete_user"
 
-    r = requests.post("http://localhost:8080/api/v1/db/read" , json = json_format)
-
+    d = {"action":"delete_user","username":user_name}
+    r = requests.post("http://54.225.39.198/api/v1/db/read",json = d)
+    print(r)
+#    return Response(r)
+#    if(r == "action = delete_user"):
+#        return Response("orchestrator works for delete user")
+#    else:
+#        return Response("something went wrong")
     if(r.status_code == 400): #user was not found
         abort(400 , 'user %s does not exists' % (user_name))
     else:
-        #numberofUserHttpReq +=1
-        r = requests.post("http://localhost:8080/api/v1/db/write" , json = json_format)
+        numberofUserHttpReq +=1
+        r = requests.post("http://54.225.39.198/api/v1/db/write" , json = json_format)
         if(r.status_code == 200):
             userCalls +=1
             return Response(j.dumps({}), status=200, mimetype='application/json')
@@ -268,25 +292,22 @@ def delete_user(user_name):
 
 @app.route("/api/v1/users" , methods = {'GET'})
 def list_all_users():
+    global numberofUserHttpReq
     numberofUserHttpReq+= 1
-    json_format = dict()
-    json_format["action"] = "list_all_users"
-    r = requests.post("http://localhost:8080/api/v1/db/read" , json = json_format)
-    dic = j.loads(r.text)
-    return Response(j.dumps(dic , indent=4 ),  status=200 , mimetype='application/json')
+#    json_format = dict()
+#    json_format["action"] = "list_all_users"
+    d = {"action":"list_all_users"}
+    r = requests.post("http://54.225.39.198/api/v1/db/read" , json = d)
+#    dic = j.loads(r.text)
+    return Response(r)
 
 @app.route("/api/v1/db/clear" , methods = {'POST'})
 def del_db():
     #numberofUserHttpReq += 1
-    num_rows_deleted = s.query(UserTable).delete()
-    s.commit()
-    num_rows_deleted = s.query(RideTable).delete()
-    s.commit()
-    num_rows_deleted = s.query(RideUsersTable).delete()
-    s.commit()
-    return Response(None , status=200 , mimetype='application/json') 
+    d = {"action":"deldbuser"}
+    r = requests.post("http://54.225.39.198/api/v1/db/write",json = d)
 
-
+    return Response(r)
 
 #ALL READ WRITE API CALLS FROM HERE:
 

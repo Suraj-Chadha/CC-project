@@ -202,29 +202,18 @@ def hello():
 
 @app.route("/api/v1/_count" , methods = {'GET'})
 def getCount1():
-    global ridesCallHttpReq
-    returnable = []
-    returnable.append(ridesCallHttpReq)
+    returnable = [ridesCallHttpReq]
     return Response(j.dumps(returnable),status=200,mimetype="application/json")
 
 @app.route("/api/v1/_count" , methods = {'DELETE'})
 def getCount1R():
-    global ridesCallHttpReq
     ridesCallHttpReq = 0
     return Response(j.dumps({}),status=200,mimetype="application/json")
 
 @app.route("/api/v1/rides/count" , methods = {'GET'})
 def getCountNumber():
-    x = list(s.query(RideTable))
-    numRides = len(x)
-    return Response(j.dumps([numRides]),status=200,mimetype="application/json")
-
-@app.route('/api/v1/rides',methods=["PUT"])
-def wrong_method():
-    global ridesCallHttpReq
-    ridesCallHttpReq +=1
-    return Response(j.dumps({"result": "Invalid method"}), 405)
-
+    numRides = len(s.query(RideTable))
+    return Respose(j.dumps([numRides]),status=200,mimetype="application/json")
 
 @app.route("/api/v1/rides", methods={'POST'})
 def ride_add():
@@ -232,7 +221,6 @@ def ride_add():
     check_content_type(request)
 
     json_format = RideTable.get_json(request.json)
-    global ridesCallHttpReq
     ridesCallHttpReq +=1
     
     if(json_format["source"] != json_format["destination"]):
@@ -240,17 +228,15 @@ def ride_add():
 
         j_one = json_format
 
-        r = requests.post("http://54.225.39.198/api/v1/db/read" , json = j_one)
-        print("making ride")
+        r = requests.post("http://localhost:8000/api/v1/db/read" , json = j_one)
+    #print (r.text)
         if(r.status_code == 400):
             abort(400 , 'user %s does not exists' % (json_format["username"]))
         else:
             j_one["action"] = "write_ride"
-            print("writing ride")
-            r = requests.post("http://54.225.39.198/api/v1/db/write" , json = j_one)
-            if(r.status_code == 201 or r.status_code == 200):
-                dic = j.loads(r.text)
-                return Response(j.dumps(dic), status=201, mimetype='application/json')
+            r = requests.post("http://localhost:8000/api/v1/db/write" , json = j_one)
+            if(r.status_code == 201):
+                return Response(r.text, status=201, mimetype='application/json')
             else:
                 abort(500 , "Internal Server Error")
     else:
@@ -261,10 +247,8 @@ def ride_add():
 def all_upcoming_rides():
     src = request.args.get("source")
     dst = request.args.get("destination")
-    global ridesCallHttpReq
     ridesCallHttpReq +=1
     if(src != dst):
-        #r = requests.post("http://54.225.39.198/api/v1/db/read" , json = json_format)
         src = RideTable.validateSrc(src)
         dst = RideTable.validateDst(dst)
         if(src == "error"):
@@ -276,7 +260,7 @@ def all_upcoming_rides():
             json_format["action"] = "upcoming_rides"
             json_format["source"] = src
             json_format["destination"] = dst
-            r = requests.post("http://54.225.39.198/api/v1/db/read" , json = json_format)
+            r = requests.post("http://localhost:8000/api/v1/db/read" , json = json_format)
             if(r.status_code == 204):
                 return Response(None , status = 204 , mimetype='application/json')
             else:
@@ -290,8 +274,7 @@ def ride_info(ride_id):
     json_format = dict()
     json_format["ride_id"] = ride_id
     json_format["action"] = "ride_info"
-    r = requests.post("http://54.225.39.198/api/v1/db/read" , json = json_format)
-    global ridesCallHttpReq
+    r = requests.post("http://localhost:8000/api/v1/db/read" , json = json_format)
     ridesCallHttpReq +=1
     if(r.status_code == 204):
         return Response(None, status=204, mimetype='application/json')
@@ -310,21 +293,19 @@ def join_ride(ride_id):
     json_format = dict()
     json_format["username"] = request.json["username"]
     json_format["ride_id"] = ride_id
-    global ridesCallHttpReq
-    ridesCallHttpReq +=1
 
     json_format["action"] = "get_user"
-    r = requests.post("http://memeboi-625101766.us-east-1.elb.amazonaws.com/api/v1/users" , json = json_format)
+    r = requests.post("http://localhost:8000/api/v1/db/read" , json = json_format)
     if(r.status_code == 400):
-        abort(400 , 'user %s does not exists' % (json_format["username"]))
+       abort(400 , 'user %s does not exists' % (json_format["username"]))
 
     json_format["action"] = "ride_info"
-    r = requests.post("http://54.225.39.198/api/v1/db/read" , json = json_format)
+    r = requests.post("http://localhost:8000/api/v1/db/read" , json = json_format)
     if(r.status_code == 204):
         return Response(None , status=204 , mimetype='application/json')
     
     json_format["action"] = "join_ride"
-    r = requests.post("http://54.225.39.198/api/v1/db/write" , json = json_format)
+    r = requests.post("http://localhost:8000/api/v1/db/write" , json = json_format)
     if(r.status_code == 200):
         return Response(j.dumps({}), status=200, mimetype='application/json')
     else:
@@ -334,16 +315,15 @@ def join_ride(ride_id):
 def del_ride(ride_id):
     json_format = dict()
     json_format["ride_id"] = ride_id
-    global ridesCallHttpReq
-    ridesCallHttpReq +=1
+    rideCallHttpReq +=1
 
     json_format["action"] = "ride_info"
-    r = requests.post("http://54.225.39.198/api/v1/db/read" , json = json_format)
+    r = requests.post("http://localhost:8000/api/v1/db/read" , json = json_format)
     if(r.status_code == 204):
         return Response(None , status=204 , mimetype='application/json')
 
     json_format["action"] = "delete_ride"
-    r = requests.post("http://54.225.39.198/api/v1/db/write" , json = json_format)
+    r = requests.post("http://localhost:8000/api/v1/db/write" , json = json_format)
 
     if(r.status_code == 200):
         return Response(j.dumps({}), status=200, mimetype='application/json')
@@ -353,9 +333,14 @@ def del_ride(ride_id):
 @app.route("/api/v1/db/clear" , methods = {'POST'})
 def del_db():
     #ridesCallHttpReq +=1
-    d = {"action":"deldbride"}
-    r = requests.post("http://54.225.39.198/api/v1/db/read" , json = d)
-    return Response(r)
+    num_rows_deleted = s.query(UserTable).delete()
+    s.commit()
+    num_rows_deleted = s.query(RideTable).delete()
+    s.commit()
+    num_rows_deleted = s.query(RideUsersTable).delete()
+    s.commit()
+    return Response(None , status=200 , mimetype='application/json')   
+
 #ALL READ WRITE API CALLS FROM HERE:
 
 @app.route("/api/v1/db/read" , methods={'POST'})
@@ -366,7 +351,7 @@ def read():
         #ret_val = UserTable.query_db(body["username"])
         #if ret_val is None:
         #    abort(400, "user not found")
-        r = requests.get("http://memeboi-625101766.us-east-1.elb.amazonaws.com/api/v1/users")
+        r = requests.get("http://user_service:8080/api/v1/users")
         all_users = j.loads(r.text)
         user = body["username"]
         for i in all_users:
